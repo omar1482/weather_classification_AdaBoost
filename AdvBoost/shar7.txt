@@ -1,0 +1,28 @@
+إيه اللي حصل؟
+الـ Prompt اللي عملناه اتنفّذ كـ Agent
+الـ Claude Code اتصرف كـ agent ذاتي — يعني مش بس بيكتب كود، هو فعلاً نفّذ أوامر على جهازك.
+
+الخطوات اللي اتعملت
+STEP 1 — Environment Check
+فتح الـ .venv وتحقق إن كل الـ libraries موجودة وطبع الـ versions.
+STEP 2 — Dataset Validation
+حمّل الـ CSV وتأكد إن الداتا سليمة — 13,200 صف، مفيش missing values، وكل الـ classes متوازنة (3300 لكل weather type).
+STEP 3 — Notebook Execution
+شغّل الأمر ده:
+bashjupyter nbconvert --to notebook --execute --inplace weather_adaboost.ipynb
+ده بيشغّل كل cells النوتبوك تلقائياً ويحفظ الـ outputs جوّاه.
+STEP 4 — Error Handling ← المهم هنا
+لقى error في Cell 28:
+TypeError: AdaBoostClassifier.__init__() got an unexpected keyword argument 'algorithm'
+السبب: إحنا كتبنا algorithm='SAMME' في النوتبوك، بس في scikit-learn 1.8.0 البارامتر ده اتحذف خالص.
+فعمل الآتي أوتوماتيكياً:
+
+استخدم find_cell.py يلاقي الـ cell اللي فيها المشكلة
+استخدم fix_notebook.py يعدّل الكود ويشيل الـ algorithm parameter
+أعاد تشغيل النوتبوك للتأكد
+
+STEP 5 — Confirmation
+تحقق بـ verify_output.py إن كل الـ plots اتعملت والـ accuracy اتطبعت.
+
+النتيجة النهائية
+🎯 AdaBoost Accuracy: 89.13%
