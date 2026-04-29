@@ -1,0 +1,577 @@
+--- CELL 2 ---
+# Data manipulation and analysis
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+# Visualization libraries
+import matplotlib.pyplot as plt
+import seaborn as sns
+try:
+    import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+
+# Machine learning - preprocessing
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split, cross_val_score, learning_curve
+
+# Machine learning - models
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import AdaBoostClassifier
+
+# Machine learning - metrics
+from sklearn.metrics import (
+    accuracy_score, confusion_matrix, classification_report,
+    precision_recall_fscore_support, roc_auc_score,
+    ConfusionMatrixDisplay
+)
+
+from math import pi
+import warnings
+warnings.filterwarnings('ignore')
+
+# Plot style
+sns.set_theme(style='whitegrid', palette='Set2')
+plt.rcParams['figure.dpi'] = 100
+plt.rcParams['font.size'] = 11
+
+print('✅ All libraries imported successfully!')
+
+--- CELL 4 ---
+df = pd.read_csv('weather_classification_data.csv')
+
+print('='*60)
+print('DATASET OVERVIEW')
+print('='*60)
+print(f'Shape          : {df.shape[0]:,} rows × {df.shape[1]} columns')
+print(f'Memory usage   : {df.memory_usage(deep=True).sum() / 1024:.1f} KB')
+print()
+df.head(10)
+
+--- CELL 6 ---
+print('DATA TYPES & NON-NULL COUNTS')
+print('-'*60)
+df.info()
+
+--- CELL 7 ---
+print('MISSING VALUES')
+print('-'*60)
+missing = df.isna().sum()
+print(missing)
+print(f'\nTotal missing values: {missing.sum()}')
+
+if missing.sum() > 0:
+    df = df.dropna()
+    print(f'Rows after dropping NaN: {df.shape[0]:,}')
+
+--- CELL 8 ---
+dupes = df.duplicated().sum()
+print(f'Duplicate rows: {dupes}')
+if dupes > 0:
+    df = df.drop_duplicates()
+    print(f'After removing duplicates: {df.shape[0]:,} rows')
+
+--- CELL 9 ---
+print('STATISTICAL SUMMARY')
+print('-'*60)
+df.describe().T.round(3)
+
+--- CELL 10 ---
+# Drop Humidity if present (consistent with original project)
+if 'Humidity' in df.columns:
+    df = df.drop(columns=['Humidity'])
+    print('Humidity column removed.')
+
+print(f'Current columns: {list(df.columns)}')
+
+--- CELL 11 ---
+print('TARGET CLASS DISTRIBUTION')
+print('-'*60)
+print(df['Weather Type'].value_counts())
+print('\nSEASON DISTRIBUTION')
+print('-'*60)
+print(df['Season'].value_counts())
+print('\nLOCATION DISTRIBUTION')
+print('-'*60)
+print(df['Location'].value_counts())
+
+--- CELL 13 ---
+# ── Target class distribution ──────────────────────────────────────
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+weather_counts = df['Weather Type'].value_counts()
+colors_main = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12']
+
+axes[0].bar(weather_counts.index, weather_counts.values, color=colors_main, edgecolor='black', linewidth=1.2)
+for i, (label, val) in enumerate(weather_counts.items()):
+    axes[0].text(i, val + 20, str(val), ha='center', fontweight='bold', fontsize=12)
+axes[0].set_title('Weather Type Distribution', fontsize=14, fontweight='bold')
+axes[0].set_xlabel('Weather Type')
+axes[0].set_ylabel('Count')
+axes[0].grid(axis='y', alpha=0.3)
+
+axes[1].pie(weather_counts.values, labels=weather_counts.index, autopct='%1.1f%%',
+            colors=colors_main, startangle=140,
+            wedgeprops=dict(edgecolor='white', linewidth=2))
+axes[1].set_title('Weather Type Proportions', fontsize=14, fontweight='bold')
+
+plt.tight_layout()
+plt.show()
+
+--- CELL 14 ---
+# ── Seasonal distribution ──────────────────────────────────────────
+season_palette = ['#FF6347', '#4682B4', '#32CD32', '#FFD700']
+
+plt.figure(figsize=(10, 6))
+ax = sns.countplot(data=df, x='Season', hue='Season', palette=season_palette, legend=False)
+for container in ax.containers:
+    ax.bar_label(container)
+plt.title('Weather Data Distribution by Season', fontsize=14, fontweight='bold')
+plt.xlabel('Season', fontsize=12)
+plt.ylabel('Count', fontsize=12)
+plt.tight_layout()
+plt.show()
+
+--- CELL 15 ---
+# ── Weather type per season (stacked bar) ──────────────────────────
+cross_tab = pd.crosstab(df['Season'], df['Weather Type'])
+cross_tab.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='Set2', edgecolor='black')
+plt.title('Weather Type Frequency by Season', fontsize=14, fontweight='bold')
+plt.xlabel('Season', fontsize=12)
+plt.ylabel('Count', fontsize=12)
+plt.xticks(rotation=0)
+plt.legend(title='Weather Type', bbox_to_anchor=(1.01, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+--- CELL 16 ---
+# ── Numerical feature distributions ───────────────────────────────
+numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+
+n_cols = 3
+n_rows = (len(numeric_cols) + n_cols - 1) // n_cols
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, n_rows * 4))
+axes = axes.flatten()
+
+for i, col in enumerate(numeric_cols):
+    sns.histplot(df[col], kde=True, ax=axes[i], color='#3498db', edgecolor='white')
+    axes[i].set_title(f'{col} Distribution', fontsize=12, fontweight='bold')
+    axes[i].set_xlabel(col)
+    axes[i].set_ylabel('Frequency')
+
+for j in range(i + 1, len(axes)):
+    axes[j].set_visible(False)
+
+plt.suptitle('Numerical Feature Distributions', fontsize=16, fontweight='bold', y=1.01)
+plt.tight_layout()
+plt.show()
+
+--- CELL 17 ---
+# ── Box plots: numerical features by weather type ──────────────────
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, n_rows * 4))
+axes = axes.flatten()
+
+for i, col in enumerate(numeric_cols):
+    sns.boxplot(data=df, x='Weather Type', y=col, palette='Set2', ax=axes[i])
+    axes[i].set_title(f'{col} by Weather Type', fontsize=12, fontweight='bold')
+    axes[i].set_xlabel('Weather Type')
+    axes[i].set_ylabel(col)
+
+for j in range(i + 1, len(axes)):
+    axes[j].set_visible(False)
+
+plt.suptitle('Feature Distribution by Weather Type', fontsize=16, fontweight='bold', y=1.01)
+plt.tight_layout()
+plt.show()
+
+--- CELL 18 ---
+# ── Temperature statistics by season ──────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+for idx, stat in enumerate(['min', 'mean', 'max']):
+    sns.barplot(data=df, x='Season', y='Temperature', hue='Season',
+                palette=season_palette, estimator=stat, ax=axes[idx], legend=False)
+    axes[idx].set_title(f'{stat.capitalize()} Temperature by Season', fontsize=12, fontweight='bold')
+    axes[idx].set_xlabel('Season')
+    axes[idx].set_ylabel('Temperature (°C)')
+
+plt.suptitle('Temperature Statistics per Season', fontsize=15, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+--- CELL 19 ---
+# ── Correlation heatmap ────────────────────────────────────────────
+plt.figure(figsize=(12, 8))
+corr_matrix = df[numeric_cols].corr()
+mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm',
+            mask=mask, linewidths=0.5, vmin=-1, vmax=1,
+            cbar_kws={'shrink': 0.8})
+plt.title('Feature Correlation Matrix', fontsize=14, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+--- CELL 20 ---
+# ── Heatmap: average weather elements by location ─────────────────
+heatmap_data = df.pivot_table(index='Location', values=numeric_cols, aggfunc='mean')
+
+plt.figure(figsize=(14, 5))
+sns.heatmap(heatmap_data, annot=True, cmap='coolwarm', linewidths=0.5, fmt='.2f')
+plt.title('Average Weather Elements by Location', fontsize=14, fontweight='bold')
+plt.xlabel('Weather Element')
+plt.ylabel('Location')
+plt.tight_layout()
+plt.show()
+
+--- CELL 21 ---
+# ── Scatter: Temperature vs Wind Speed by Season ──────────────────
+if PLOTLY_AVAILABLE:
+    fig = px.scatter(df, x='Temperature', y='Wind Speed', color='Season',
+                     hover_name='Location', size='Precipitation (%)',
+                     title='Temperature vs Wind Speed (by Season & Precipitation)')
+    fig.update_layout(height=500)
+    fig.show()
+else:
+    plt.figure(figsize=(10, 6))
+    for season in df['Season'].unique():
+        subset = df[df['Season'] == season]
+        plt.scatter(subset['Temperature'], subset['Wind Speed'],
+                    label=season, alpha=0.5, s=30)
+    plt.xlabel('Temperature (°C)')
+    plt.ylabel('Wind Speed')
+    plt.title('Temperature vs Wind Speed by Season')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+--- CELL 22 ---
+# ── Violin plot: key features by weather type ─────────────────────
+key_features = ['Temperature', 'Wind Speed', 'Precipitation (%)']
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+for i, feat in enumerate(key_features):
+    sns.violinplot(data=df, x='Weather Type', y=feat, palette='Set2',
+                   inner='quartile', ax=axes[i])
+    axes[i].set_title(f'{feat} by Weather Type', fontsize=12, fontweight='bold')
+    axes[i].set_xlabel('Weather Type')
+
+plt.suptitle('Violin Plots — Key Features per Weather Type', fontsize=15, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+--- CELL 23 ---
+# ── Pairplot ───────────────────────────────────────────────────────
+sns.pairplot(df[numeric_cols + ['Weather Type']], hue='Weather Type',
+             palette='Set2', corner=True, plot_kws=dict(alpha=0.4, s=15))
+plt.suptitle('Pairwise Relationships Between Features', y=1.01)
+plt.show()
+
+--- CELL 25 ---
+TARGET_COL = 'Weather Type'
+
+X = df.drop(columns=[TARGET_COL])
+y = df[TARGET_COL]
+
+categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
+numeric_feature_cols = X.select_dtypes(include=np.number).columns.tolist()
+
+print(f'Features shape    : {X.shape}')
+print(f'Target shape      : {y.shape}')
+print(f'Numeric features  : {numeric_feature_cols}')
+print(f'Categorical features: {categorical_cols}')
+print(f'\nClass distribution:\n{y.value_counts()}')
+
+--- CELL 26 ---
+# Feature Engineering
+X['Temp_Wind'] = X['Temperature'] * X['Wind Speed']
+X['Pressure_UV'] = X['Atmospheric Pressure'] * X['UV Index']
+
+# Update feature columns lists since new columns were added
+categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
+numeric_feature_cols = X.select_dtypes(include=np.number).columns.tolist()
+
+
+
+--- CELL 27 ---
+# Pipeline for numeric and categorical features
+numeric_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler()),
+])
+
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
+])
+
+preprocessor = ColumnTransformer(transformers=[
+    ('num', numeric_transformer, numeric_feature_cols),
+    ('cat', categorical_transformer, categorical_cols),
+])
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print(f'Training samples  : {X_train.shape[0]:,}')
+print(f'Testing samples   : {X_test.shape[0]:,}')
+print(f'\nTraining class distribution:')
+print(y_train.value_counts())
+
+--- CELL 29 ---
+# Build AdaBoost with tuned configuration
+stump = DecisionTreeClassifier(max_depth=3, random_state=42)
+
+ada_clf = AdaBoostClassifier(
+    estimator=stump,
+    n_estimators=200,
+    learning_rate=0.5,
+    random_state=42
+)
+
+ada_pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('model', ada_clf),
+])
+
+print('Training AdaBoost...')
+ada_pipeline.fit(X_train, y_train)
+print('✅ Model trained successfully!')
+
+
+--- CELL 31 ---
+cv_scores = cross_val_score(ada_pipeline, X_train, y_train, cv=5, scoring='accuracy', n_jobs=-1)
+
+print('='*60)
+print('5-FOLD CROSS-VALIDATION RESULTS')
+print('='*60)
+for i, score in enumerate(cv_scores, 1):
+    print(f'  Fold {i}: {score:.4f}')
+print(f'\n  Mean  : {cv_scores.mean():.4f}')
+print(f'  Std   : {cv_scores.std():.4f} (±{cv_scores.std() * 2:.4f})')
+
+# Visualize CV scores
+plt.figure(figsize=(8, 5))
+bars = plt.bar([f'Fold {i}' for i in range(1, 6)], cv_scores,
+               color='#3498db', edgecolor='black', linewidth=1.2)
+plt.axhline(cv_scores.mean(), color='red', linestyle='--', linewidth=2,
+            label=f'Mean = {cv_scores.mean():.4f}')
+plt.fill_between(range(-1, 6),
+                 cv_scores.mean() - cv_scores.std(),
+                 cv_scores.mean() + cv_scores.std(),
+                 alpha=0.15, color='red', label='±1 std')
+for bar, score in zip(bars, cv_scores):
+    plt.text(bar.get_x() + bar.get_width()/2, score + 0.003,
+             f'{score:.4f}', ha='center', fontweight='bold')
+plt.title('AdaBoost — Cross-Validation Accuracy', fontsize=14, fontweight='bold')
+plt.ylabel('Accuracy')
+plt.ylim(0.7, 1.0)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+--- CELL 33 ---
+y_pred = ada_pipeline.predict(X_test)
+
+ada_accuracy = accuracy_score(y_test, y_pred) * 100
+ada_precision, ada_recall, ada_f1, _ = precision_recall_fscore_support(
+    y_test, y_pred, average='weighted'
+)
+
+print('='*60)
+print('ADABOOST — PERFORMANCE METRICS')
+print('='*60)
+print(f'Accuracy          : {ada_accuracy:.2f}%')
+print(f'Precision (weighted): {ada_precision:.4f}')
+print(f'Recall (weighted)   : {ada_recall:.4f}')
+print(f'F1-Score (weighted) : {ada_f1:.4f}')
+print(f'CV Mean Accuracy    : {cv_scores.mean():.4f}')
+print(f'CV Std              : {cv_scores.std():.4f}')
+print()
+print('DETAILED CLASSIFICATION REPORT')
+print('-'*60)
+print(classification_report(y_test, y_pred))
+
+--- CELL 35 ---
+labels_sorted = sorted(y.unique())
+cm = confusion_matrix(y_test, y_pred, labels=labels_sorted)
+
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+# Raw counts
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=labels_sorted, yticklabels=labels_sorted,
+            ax=axes[0], cbar_kws={'shrink': 0.8}, linewidths=0.5)
+axes[0].set_title('AdaBoost — Confusion Matrix (Counts)', fontsize=13, fontweight='bold')
+axes[0].set_xlabel('Predicted', fontsize=12)
+axes[0].set_ylabel('Actual', fontsize=12)
+
+# Normalized
+cm_norm = cm.astype(float) / cm.sum(axis=1, keepdims=True)
+sns.heatmap(cm_norm, annot=True, fmt='.2%', cmap='Blues',
+            xticklabels=labels_sorted, yticklabels=labels_sorted,
+            ax=axes[1], cbar_kws={'shrink': 0.8}, linewidths=0.5)
+axes[1].set_title('AdaBoost — Confusion Matrix (Normalized)', fontsize=13, fontweight='bold')
+axes[1].set_xlabel('Predicted', fontsize=12)
+axes[1].set_ylabel('Actual', fontsize=12)
+
+plt.tight_layout()
+plt.show()
+
+--- CELL 37 ---
+print('MISCLASSIFICATION ANALYSIS')
+print('='*70)
+total_errors = 0
+for i, actual in enumerate(labels_sorted):
+    for j, predicted in enumerate(labels_sorted):
+        if i != j and cm[i][j] > 0:
+            rate = (cm[i][j] / cm[i].sum()) * 100
+            print(f'  {actual:<10} → {predicted:<10}: {cm[i][j]:>3} samples  ({rate:.2f}%)')
+            total_errors += cm[i][j]
+
+print(f'\n  Total misclassifications: {total_errors} / {len(y_test):,}')
+print(f'  Overall error rate: {(total_errors / len(y_test)) * 100:.2f}%')
+
+--- CELL 39 ---
+ada_model_fitted = ada_pipeline.named_steps['model']
+feature_names = ada_pipeline.named_steps['preprocessor'].get_feature_names_out()
+importances = ada_model_fitted.feature_importances_
+
+feat_imp_df = pd.DataFrame({
+    'Feature': feature_names,
+    'Importance': importances
+}).sort_values('Importance', ascending=False).reset_index(drop=True)
+
+print('TOP 15 ADABOOST FEATURE IMPORTANCES')
+print('='*50)
+print(feat_imp_df.head(15).to_string(index=False))
+
+--- CELL 40 ---
+# Visualize feature importances
+top_n = 15
+top_feats = feat_imp_df.head(top_n).iloc[::-1]
+
+plt.figure(figsize=(10, 7))
+bars = plt.barh(top_feats['Feature'], top_feats['Importance'],
+                color='#2a9d8f', edgecolor='black', linewidth=0.8)
+for bar, val in zip(bars, top_feats['Importance']):
+    plt.text(val + 0.001, bar.get_y() + bar.get_height()/2,
+             f'{val:.4f}', va='center', fontsize=9)
+plt.title(f'AdaBoost — Top {top_n} Feature Importances', fontsize=14, fontweight='bold')
+plt.xlabel('Importance', fontsize=12)
+plt.tight_layout()
+plt.show()
+
+--- CELL 42 ---
+train_sizes, train_scores, val_scores = learning_curve(
+    ada_pipeline, X_train, y_train,
+    cv=5, n_jobs=-1,
+    train_sizes=np.linspace(0.1, 1.0, 10),
+    scoring='accuracy'
+)
+
+train_mean = train_scores.mean(axis=1)
+train_std  = train_scores.std(axis=1)
+val_mean   = val_scores.mean(axis=1)
+val_std    = val_scores.std(axis=1)
+
+plt.figure(figsize=(10, 6))
+plt.plot(train_sizes, train_mean, 'o-', color='#3498db', linewidth=2, label='Training Accuracy')
+plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.15, color='#3498db')
+plt.plot(train_sizes, val_mean, 'o-', color='#e74c3c', linewidth=2, label='Validation Accuracy')
+plt.fill_between(train_sizes, val_mean - val_std, val_mean + val_std, alpha=0.15, color='#e74c3c')
+
+plt.title('AdaBoost — Learning Curve', fontsize=14, fontweight='bold')
+plt.xlabel('Training Set Size')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+--- CELL 44 ---
+# Accuracy vs number of estimators (staged predictions)
+X_test_preprocessed = ada_pipeline.named_steps['preprocessor'].transform(X_test)
+staged_accuracies = [
+    accuracy_score(y_test, pred)
+    for pred in ada_model_fitted.staged_predict(X_test_preprocessed)
+]
+
+plt.figure(figsize=(12, 5))
+plt.plot(range(1, len(staged_accuracies) + 1), staged_accuracies,
+         color='#2a9d8f', linewidth=1.5)
+best_n = np.argmax(staged_accuracies) + 1
+plt.axvline(best_n, color='red', linestyle='--', linewidth=1.5,
+            label=f'Best n_estimators = {best_n} ({max(staged_accuracies):.4f})')
+plt.title('AdaBoost — Test Accuracy vs Number of Estimators', fontsize=14, fontweight='bold')
+plt.xlabel('Number of Estimators')
+plt.ylabel('Test Accuracy')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+print(f'\nBest accuracy    : {max(staged_accuracies):.4f}  at n_estimators = {best_n}')
+
+--- CELL 46 ---
+# ── Radar / spider chart ───────────────────────────────────────────
+categories = ['Accuracy', 'Precision', 'Recall', 'F1-Score']
+values = [ada_accuracy / 100, ada_precision, ada_recall, ada_f1]
+values += values[:1]
+angles = [n / float(len(categories)) * 2 * pi for n in range(len(categories))]
+angles += angles[:1]
+
+fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(projection='polar'))
+ax.plot(angles, values, 'o-', linewidth=2, color='#3498db')
+ax.fill(angles, values, alpha=0.25, color='#3498db')
+ax.set_theta_offset(pi / 2)
+ax.set_theta_direction(-1)
+ax.set_xticks(angles[:-1])
+ax.set_xticklabels(categories, fontsize=12, fontweight='bold')
+ax.set_ylim(0, 1)
+ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+for angle, val, label in zip(angles[:-1], values[:-1], categories):
+    ax.text(angle, val + 0.05, f'{val:.3f}', ha='center', fontsize=10, fontweight='bold', color='#2c3e50')
+ax.set_title('AdaBoost — Performance Radar', size=15, fontweight='bold', pad=20)
+plt.tight_layout()
+plt.show()
+
+--- CELL 47 ---
+# ── Final summary printout ─────────────────────────────────────────
+print('='*80)
+print('ADABOOST WEATHER CLASSIFICATION — EXECUTIVE SUMMARY')
+print('='*80)
+
+print(f"\n{'📊 DATASET':=^80}")
+print(f"  Total samples     : {len(df):,}")
+print(f"  Features          : {X.shape[1]} (meteorological & environmental)")
+print(f"  Target classes    : 4 ({', '.join(labels_sorted)})")
+print(f"  Training samples  : {X_train.shape[0]:,} (80%)")
+print(f"  Testing samples   : {X_test.shape[0]:,} (20%)")
+
+print(f"\n{'🤖 MODEL CONFIGURATION':=^80}")
+print(f"  Algorithm         : AdaBoost (Adaptive Boosting)")
+print(f"  Base estimator    : Decision Stump (max_depth=3)")
+print(f"  N estimators      : 200")
+print(f"  Learning rate     : 0.5")
+print(f"  Preprocessing     : StandardScaler + OneHotEncoder (Pipeline)")
+
+print(f"\n{'🏆 PERFORMANCE':=^80}")
+print(f"  Test Accuracy     : {ada_accuracy:.2f}%")
+print(f"  Precision         : {ada_precision:.4f}")
+print(f"  Recall            : {ada_recall:.4f}")
+print(f"  F1-Score          : {ada_f1:.4f}")
+print(f"  CV Mean Accuracy  : {cv_scores.mean():.4f} (±{cv_scores.std():.4f})")
+
+print(f"\n{'🔍 TOP 5 MOST IMPORTANT FEATURES':=^80}")
+for i, row in feat_imp_df.head(5).iterrows():
+    print(f"  {i+1}. {row['Feature']:<35} Importance: {row['Importance']:.4f}")
+
+print('='*80)
+

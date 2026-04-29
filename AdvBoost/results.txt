@@ -1,0 +1,6 @@
+Baseline accuracy: 89.13%
+✅ [STEP 1 — DEEPER BASE ESTIMATOR — 90.00%]
+Best params: {'model__estimator__max_depth': 3, 'model__learning_rate': 0.5, 'model__n_estimators': 200}
+Best CV score: 90.86%
+✅ [STEP 2 — HYPERPARAMETER TUNING — 90.53%]
+✅ [STEP 3 — FEATURE ENGINEERING — 90.27%]

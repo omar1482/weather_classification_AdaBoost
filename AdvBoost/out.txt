@@ -1,0 +1,32 @@
+================================================================================
+ADABOOST WEATHER CLASSIFICATION — EXECUTIVE SUMMARY
+================================================================================
+
+===================================📊 DATASET====================================
+  Total samples     : 13,200
+  Features          : 11 (meteorological & environmental)
+  Target classes    : 4 (Cloudy, Rainy, Snowy, Sunny)
+  Training samples  : 10,560 (80%)
+  Testing samples   : 2,640 (20%)
+
+=============================🤖 MODEL CONFIGURATION==============================
+  Algorithm         : AdaBoost (Adaptive Boosting)
+  Base estimator    : Decision Stump (max_depth=3)
+  N estimators      : 200
+  Learning rate     : 0.5
+  Preprocessing     : StandardScaler + OneHotEncoder (Pipeline)
+
+=================================🏆 PERFORMANCE==================================
+  Test Accuracy     : 90.27%
+  Precision         : 0.9040
+  Recall            : 0.9027
+  F1-Score          : 0.9030
+  CV Mean Accuracy  : 0.9084 (±0.0053)
+
+========================🔍 TOP 5 MOST IMPORTANT FEATURES=========================
+  1. num__Atmospheric Pressure           Importance: 0.2280
+  2. num__Temperature                    Importance: 0.1452
+  3. num__Wind Speed                     Importance: 0.1284
+  4. num__Visibility (km)                Importance: 0.0987
+  5. cat__Cloud Cover_clear              Importance: 0.0933
+================================================================================

@@ -9,7 +9,7 @@ The model classifies weather into four categories: **Cloudy, Rainy, Snowy, and S
 
 This project builds an end-to-end machine learning pipeline for weather classification. It covers full exploratory data analysis, feature preprocessing, model training with AdaBoost, and comprehensive evaluation through multiple visualizations.
 
-**Final Test Accuracy: 89.13%**
+**Final Test Accuracy: 90.27%**
 
 ---
 
@@ -31,7 +31,7 @@ weather-classification-adaboost/
 | Property | Value |
 |---|---|
 | Total samples | 13,200 |
-| Features | 10 |
+| Features | 12 |
 | Target classes | 4 (Cloudy, Rainy, Snowy, Sunny) |
 | Missing values | None |
 | Class balance | Equal (3,300 per class) |
@@ -40,6 +40,7 @@ weather-classification-adaboost/
 - Temperature, Wind Speed, Precipitation (%), Atmospheric Pressure
 - UV Index, Visibility (km), Cloud Cover
 - Season, Location *(categorical)*
+- Temp_Wind, Pressure_UV *(engineered interaction features)*
 
 ---
 
@@ -56,14 +57,15 @@ weather-classification-adaboost/
 - Pairwise feature relationships (pairplot)
 
 ### 2. Preprocessing Pipeline
+- Feature engineering: added `Temp_Wind` and `Pressure_UV` interaction features
 - Median imputation + `StandardScaler` for numerical features
 - Most-frequent imputation + `OneHotEncoder` for categorical features
 - `ColumnTransformer` + `Pipeline` from scikit-learn
 - 80/20 stratified train-test split
 
 ### 3. AdaBoost Model
-- Base estimator: **Decision Stump** (`max_depth=1`)
-- `n_estimators=200`, `learning_rate=0.8`
+- Base estimator: **Decision Stump** (`max_depth=3`)
+- `n_estimators=200`, `learning_rate=0.5`
 - Wrapped in a full scikit-learn `Pipeline`
 
 ### 4. Evaluation
@@ -140,11 +142,11 @@ Click **Kernel → Restart & Run All** to execute all cells from top to bottom.
 
 | Metric | Value |
 |---|---|
-| Test Accuracy | **89.13%** |
-| Weighted Precision | ~0.89 |
-| Weighted Recall | ~0.89 |
-| Weighted F1-Score | ~0.89 |
-| CV Mean Accuracy | ~0.88 |
+| Test Accuracy | **90.27%** |
+| Weighted Precision | ~0.90 |
+| Weighted Recall | ~0.90 |
+| Weighted F1-Score | ~0.90 |
+| CV Mean Accuracy | ~0.91 |
 
 ---
 
